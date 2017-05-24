@@ -111,13 +111,13 @@ int main() {
           Eigen::VectorXd ptsx_v = Eigen::VectorXd::Map(ptsx.data(), ptsx.size());
           Eigen::VectorXd ptsy_v = Eigen::VectorXd::Map(ptsy.data(), ptsy.size());
 
-          auto coeffs = polyfit(ptsx_v, ptsy_v, 3);
+          auto coeffs = polyfit(ptsx_v, ptsy_v, 2);
 
 		  // find current state
           double cte = polyeval(coeffs, px) - py;
           // Due to the sign starting at 0, the orientation error is -f'(x).
           // tangent of 3rd degree polynomial
-          //double epsi = psi - atan(coeffs[1] + 2 * coeffs[2] * px + 3 * coeffs[3] * px * px);
+          //double epsi = psi - atan(coeffs[1] + 2 * coeffs[2] * px);
           double epsi = -atan(coeffs[1]);
 
           Eigen::VectorXd state(6);
