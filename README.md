@@ -3,6 +3,78 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+## Reflection
+
+### Vehicle Model
+
+```
+State:
+ - x   : position in the forward direction relative to the vehicle
+ - y   : position in the lateral direction relative to the vehicle
+ - psi : vehicle orientation
+ - v   : velocity
+
+Actuators:
+ - delta : steering angle in radians
+ - a     : acceleration
+
+Other:
+ - dt : timestep length
+ - Lf : distance from the center of the vehicle to its front
+
+Next state:
+ - x_t1   = x_t + v_t * cos(psi_t) * dt
+ - y_t1   = y_t + v_t * sin(psi_t) * dt
+ - psi_t1 = psi_t * v_t / Lf * delta * dt
+ - v_t1   = v_t + a_t * dt
+```
+
+We are using vehicle dynamic model mentioned in the lecture. The x axis is
+pointing at the vehicle's moving direction at time t. The x value loaded from the simulator is on a fixed coordinate system, so a coordinate transform is required. All trajectory points should be mapped to the new vehicle coordinate system.
+
+```
+new_x = (ori_x - vehicle_x) * cos(-psi) - (ori_y - vehicle_y) * sin(-psi)
+
+new_y = (ori_x - vehicle_x) * sin(-psi) + (ori_y - vehicle_y) * sin(-psi)
+```
+
+
+### Timestep Length and Frequency
+
+```
+Frequency (dt): 0.1
+Timestep length (N): 8
+```
+
+After several attempts, I notice that dt * N controls the length of the green line in the simulator. If the line is too short, the vehicle couldn't react to the turn well. It couldn't make enough steering angle. When the line is too long, it tends to draw funny lines. The best range is around 8 to 10.
+
+I was trying 0.05 for dt to get enough points and it worked well. In order to reduce the calculation, I start increasing dt. The maximum is 0.1 because that is the amount of latency. It is easier to handle latency when we use a timestep with the length that can represent the latency.
+
+
+### Polynomial Fitting and MPC Preprocessing
+
+```
+Polynomial form: ax^2 + bx + c
+
+Cost function: 10 * cte^2 + epsi^2 + ev^2 + 1000 * delta^2 + a^2 + d_delta^2 + d_a^2
+```
+I tried first, second, and third degree polynomails. The first degree polynomial represents a line. It can't capture the trajectory well. Second and third degree seem to be doing well. Since I can't tell the difference, I chose the second degree polynomial with less calculation.
+
+The cost function takes cte, yaw error, velocity error, acceleration, delta, difference of deltas, and difference of accelerations into account. Since steering angle is the most importance factor we care, I give it a larger weight. And it seems working without adding weights to other terms. Also, we need larger weights when the speed is higer.
+
+
+### Model Predictive Control with Latency
+
+When the latency is applied, the vehicle oscillates around the trajectory. It gets worse with higher speed. In order to compansate the delay, we need to return the predicted steering angle ahead in the future. I can simply be done by returning the second value from ipopt result. We also can smooth the value by averaging values around it.
+
+
+### Steering angle and throttle
+
+In the simulator, a positive angle means to steer right. However, in the vehicle dynamic model, a positive delta indicates turning left, so we have to apply negative scaled delta value to steering angle.
+
+The lower bound and upper bound of acceleration is -1 and 1, which is the same as the range required by the throttle. We can simply assign `a` to throttle.
+
+
 ## Dependencies
 
 * cmake >= 3.5
@@ -23,7 +95,7 @@ Self-Driving Car Engineer Nanodegree Program
    * Some people have reported `--with-openblas` causes issues. If this is the case install without it `brew install ipopt`.
   * Linux
     * You will need a version of Ipopt 3.12.1 or higher. The version available through `apt-get` is 3.11.x. If you can get that version to work great but if not there's a script `install_ipopt.sh` that will install Ipopt. You just need to download the source from the Ipopt [releases page](https://www.coin-or.org/download/source/Ipopt/) or the [Github releases](https://github.com/coin-or/Ipopt/releases) page.
-    * Then call `install_ipopt.sh` with the source directory as the first argument, ex: `bash install_ipopt.sh Ipopt-3.12.1`. 
+    * Then call `install_ipopt.sh` with the source directory as the first argument, ex: `bash install_ipopt.sh Ipopt-3.12.1`.
   * Windows: TODO. If you can use the Linux subsystem and follow the Linux instructions.
 * [CppAD](https://www.coin-or.org/CppAD/)
   * Mac: `brew install cppad`

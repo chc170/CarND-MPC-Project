@@ -98,12 +98,12 @@ int main() {
           * Both are in between [-1, 1].
           */
           // convert coordinate system
-          double vehicle_x, vehicle_y;
+          double d_x, d_y;
           for (int i = 0; i < ptsx.size(); ++i) {
-            vehicle_x = ptsx[i]-px;
-            vehicle_y = ptsy[i]-py;
-            ptsx[i] = vehicle_x * cos(-psi) - vehicle_y * sin(-psi);
-            ptsy[i] = vehicle_x * sin(-psi) + vehicle_y * cos(-psi);
+            d_x = ptsx[i]-px;
+            d_y = ptsy[i]-py;
+            ptsx[i] = d_x * cos(-psi) - d_y * sin(-psi);
+            ptsy[i] = d_x * sin(-psi) + d_y * cos(-psi);
           }
           px = py = psi = 0;
 
@@ -114,9 +114,9 @@ int main() {
           auto coeffs = polyfit(ptsx_v, ptsy_v, 2);
 
 		  // find current state
-          double cte = polyeval(coeffs, px) - py;
+          double cte = polyeval(coeffs, px);
           // Due to the sign starting at 0, the orientation error is -f'(x).
-          // tangent of 3rd degree polynomial
+          // tangent of 2nd degree polynomial
           //double epsi = psi - atan(coeffs[1] + 2 * coeffs[2] * px);
           double epsi = -atan(coeffs[1]);
 
@@ -126,12 +126,12 @@ int main() {
 		  // mpc solve
           auto vars = mpc.Solve(state, coeffs);
 
-          double steer_value    = -vars[0];
+          double steer_value    = vars[0];
           double throttle_value = vars[1];
 
           json msgJson;
           // normalize steering angle to the range (-1, 1)
-          msgJson["steering_angle"] = steer_value / 0.436332;
+          msgJson["steering_angle"] = -steer_value / 0.436332;
           msgJson["throttle"]       = throttle_value;
 
           auto msg1 = "42[\"steer\"," + msgJson.dump() + "]";
